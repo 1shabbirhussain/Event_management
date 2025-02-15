@@ -71,7 +71,7 @@ class _RegisterViewState extends State<RegisterView> {
         phone.isNotEmpty &&
         password == cpassword &&
         password.length >= 8 &&
-        phone.length == 10) {
+        phone.length == 11) {
       setState(() {
         _isLoading = true;
       });
@@ -80,9 +80,12 @@ class _RegisterViewState extends State<RegisterView> {
             .createUserWithEmailAndPassword(email: email, password: password);
         addUserDetails(uname, email, phone, 0);
         // ignore: use_build_context_synchronously
-        Navigator.of(context).push(MaterialPageRoute(builder: (context) {
-          return const VerifyEmailView();
+        Navigator.of(context).push(MaterialPageRoute(builder: (BuildContext context) {
+          return const LoginView();
         }));
+        // Navigator.of(context).push(MaterialPageRoute(builder: (context) {
+        //   return const VerifyEmailView();
+        // }));
         _uname.clear();
         _email.clear();
         _phone.clear();
@@ -133,7 +136,7 @@ class _RegisterViewState extends State<RegisterView> {
       showAlertDialog(context, "Invalid Input", "please enter correct email");
     } else if (phone.isEmpty) {
       showAlertDialog(context, "Invalid Input", "please enter your mobile no.");
-    } else if (phone.length != 10) {
+    } else if (phone.length != 11) {
       showAlertDialog(
           context, "Invalid Input", "please enter correct phone no.");
     } else if (password.isEmpty) {
