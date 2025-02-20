@@ -1,16 +1,18 @@
-// ignore_for_file: unnecessary_null_comparison, use_build_context_synchronously
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:location/location.dart' as location;
+import 'package:geolocator/geolocator.dart';
 
 class SetLocation extends StatefulWidget {
-  final String documentId;
+  // final String documentId;
 
   const SetLocation({
     Key? key,
-    required this.documentId,
+    // required this.documentId,
   }) : super(key: key);
 
   @override
@@ -18,173 +20,162 @@ class SetLocation extends StatefulWidget {
 }
 
 class _SetLocationState extends State<SetLocation> {
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
   LatLng? _selectedLocation;
   double _eventRadius = 0.0;
   final TextEditingController _searchController = TextEditingController();
-  final location.Location _location = location.Location();
-
-  void showAlertDialog(BuildContext context, String title, String message) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              child: const Text(
-                'OK',
-                style: TextStyle(color: Colors.deepPurple),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
-    // showAlertDialog(context, "Set Event Location",
-    //     "Using searchbar findout your event location and pinpoint exact location.\n Using slider given below set event radius.\n If the attendee leaves this circle then he will be out of the location.");
   }
 
   Future<void> _getCurrentLocation() async {
-    try {
-      location.LocationData? locationData = await _location.getLocation();
-      if (locationData != null) {
-        final latitude = locationData.latitude!;
-        final longitude = locationData.longitude!;
-        setState(() {
-          _selectedLocation = LatLng(latitude, longitude);
-        });
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLngZoom(
-            LatLng(latitude, longitude),
-            15,
-          ),
-        );
-      }
-    } catch (e) {
-      //print('Error getting current location: $e');
-    }
-  }
+    bool serviceEnabled;
+    LocationPermission permission;
 
-  @override
-  void dispose() {
-    _mapController?.dispose();
-    _searchController.dispose();
-    super.dispose();
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+
+      setState(() {
+        _selectedLocation = LatLng(position.latitude, position.longitude);
+      });
+      _mapController.move(_selectedLocation!, 15);
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.deniedForever || permission == LocationPermission.denied) {
+        return;
+      }
+    }
+
+    try {
+      Position position =
+          await Geolocator.getLastKnownPosition() ?? await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+
+      setState(() {
+        _selectedLocation = LatLng(position.latitude, position.longitude);
+      });
+      _mapController.move(_selectedLocation!, 15);
+    } catch (e) {
+      log('Error getting current location: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Set Event Location",
-        ),
+        title: const Text("Set Event Location"),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
       ),
       backgroundColor: Colors.grey[300],
       body: Stack(
         children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _selectedLocation ?? const LatLng(0, 0),
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              center: _selectedLocation ?? LatLng(0, 0),
               zoom: 15,
+              onTap: (tapPosition, latLng) {
+                setState(() {
+                  _selectedLocation = latLng;
+                });
+              },
             ),
-            onMapCreated: (controller) {
-              setState(() {
-                _mapController = controller;
-              });
-            },
-            onTap: (position) {
-              setState(() {
-                _selectedLocation = position;
-              });
-            },
-            markers: _selectedLocation != null
-                ? {
+            children: [
+              TileLayer(
+                urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                subdomains: ['a', 'b', 'c'],
+              ),
+              if (_selectedLocation != null)
+                MarkerLayer(
+                  markers: [
                     Marker(
-                      markerId: const MarkerId('selectedLocation'),
-                      position: _selectedLocation!,
+                      point: _selectedLocation!,
+                      builder: (ctx) => const Icon(
+                        Icons.location_pin,
+                        color: Colors.red,
+                        size: 40,
+                      ),
                     ),
-                  }
-                : {},
-            circles: _selectedLocation != null
-                ? {
-                    Circle(
-                      circleId: const CircleId('eventRadius'),
-                      center: _selectedLocation!,
+                  ],
+                ),
+              if (_selectedLocation != null)
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: _selectedLocation!,
                       radius: _eventRadius,
-                      fillColor: Colors.blue.withOpacity(0.2),
-                      strokeColor: Colors.blue,
+                      color: Colors.blue.withOpacity(0.2),
+                      borderColor: Colors.blue,
+                      borderStrokeWidth: 2,
                     ),
-                  }
-                : {},
+                  ],
+                ),
+            ],
           ),
           Positioned(
             top: 16,
             left: 16,
             right: 16,
-            child: Container(
-              color: Colors.white,
-              child: Row(
-                children: [
-                  const SizedBox(
-                    height: 50,
-                  ),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.white),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        cursorColor: Colors.deepPurple,
-                        decoration: const InputDecoration(
-                          hintText: 'Search for a location',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                        ),
-                      ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      hintText: 'Search for a location',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.search),
-                    onPressed: () async {
-                      final query = _searchController.text;
-                      if (query.isNotEmpty) {
-                        List<Location> locations =
-                            await locationFromAddress(query);
+                ),
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () async {
+                    final query = _searchController.text;
+                    if (query.isNotEmpty) {
+                      try {
+                        List<Location> locations = await locationFromAddress(query);
                         if (locations.isNotEmpty) {
-                          final location = locations.first;
-                          _mapController?.animateCamera(
-                            CameraUpdate.newLatLngZoom(
-                              LatLng(location.latitude, location.longitude),
-                              15,
-                            ),
-                          );
+                          final loc = locations.first;
+                          LatLng searchLocation = LatLng(loc.latitude, loc.longitude);
+                          _mapController.move(searchLocation, 15);
                           setState(() {
-                            _selectedLocation =
-                                LatLng(location.latitude, location.longitude);
+                            _selectedLocation = searchLocation;
                           });
                         }
+                      } catch (e) {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: const Text('Error'),
+                              content: Text('Could not find location: $e'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
                       }
-                    },
-                  ),
-                ],
-              ),
+                    }
+                  },
+                ),
+              ],
             ),
           ),
           Positioned(
@@ -196,7 +187,7 @@ class _SetLocationState extends State<SetLocation> {
               max: 500,
               value: _eventRadius,
               activeColor: Colors.deepPurple,
-              inactiveColor: const Color.fromARGB(255, 130, 98, 185),
+              inactiveColor: Colors.deepPurple.shade100,
               onChanged: (value) {
                 setState(() {
                   _eventRadius = value;
@@ -206,31 +197,23 @@ class _SetLocationState extends State<SetLocation> {
           ),
         ],
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(right: 40),
-        child: FloatingActionButton(
-          onPressed: () async {
-            if (_selectedLocation != null) {
-              final latitude = _selectedLocation!.latitude;
-              final longitude = _selectedLocation!.longitude;
-              final range = _eventRadius;
-
-              await FirebaseFirestore.instance
-                  .collection("events")
-                  .doc(widget.documentId)
-                  .update({
-                'latitude': latitude,
-                'longitude': longitude,
-                'range': range,
-              });
-            }
-            Navigator.pop(context);
-          },
-          backgroundColor: Colors.deepPurple,
-          child: const Icon(
-            Icons.check,
-          ),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          if (_selectedLocation != null) {
+            // await FirebaseFirestore.instance
+            //     .collection("events")
+            //     .doc(widget.documentId)
+            //     .update({
+            //   'latitude': _selectedLocation!.latitude,
+            //   'longitude': _selectedLocation!.longitude,
+            //   'range': _eventRadius,
+            // });
+          }
+          // ignore: use_build_context_synchronously
+          Navigator.pop(context);
+        },
+        backgroundColor: Colors.deepPurple,
+        child: const Icon(Icons.check),
       ),
     );
   }
