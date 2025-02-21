@@ -33,11 +33,13 @@ class _FirstPageState extends State<FirstPage> {
             const SizedBox(
               height: 30,
             ),
-            Lottie.asset(
-              'assets/animations/introhost1.json',
-              reverse: true,
-              repeat: true,
-              fit: BoxFit.cover,
+            Image.asset(
+              "assets/event_image.jpg",
+              
+              // 'assets/animations/introhost1.json',
+              // reverse: true,
+              // repeat: true,
+              fit: BoxFit.fill,
             ),
             const SizedBox(
               height: 30,
@@ -46,7 +48,7 @@ class _FirstPageState extends State<FirstPage> {
               padding: EdgeInsets.all(20.0),
               child: Center(
                 child: Text(
-                  "Our app provides a platform where anyone can organize and attend events.",
+                  "Our app provides a platform where anyone from campus can attend events.",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
