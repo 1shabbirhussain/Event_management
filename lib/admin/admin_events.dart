@@ -1,3 +1,4 @@
+import 'package:event_managment/admin/host_event.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -74,6 +75,16 @@ class _AdminEventsState extends State<AdminEvents> {
         ),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const HostEvent(),
+          ),
+              );
+            },
+          ),
       ),
       backgroundColor: Colors.grey[300],
       body: Column(
