@@ -80,7 +80,7 @@ class _HostEventState extends State<HostEvent> {
 
     super.dispose();
   }
-
+  // ============= ADD EVENT DETAILS TO FIREBASE =============
   Future<void> addEventDetails(
     String title,
     String description,
@@ -101,9 +101,13 @@ class _HostEventState extends State<HostEvent> {
     try {
       final eventDoc = FirebaseFirestore.instance.collection("events").doc();
       List<String> days = [];
-      for (int i = 0; i < _numberOfDays; i++) {
-        final description = _dayWiseDescription[i].text.trim();
-        days.add(description);
+
+      // Only process day-wise descriptions if numberOfDays > 0
+      if (numberOfDays > 0) {
+        for (int i = 0; i < numberOfDays; i++) {
+          final description = _dayWiseDescription[i].text.trim();
+          days.add(description);
+        }
       }
 
       final eventData = {
@@ -132,9 +136,12 @@ class _HostEventState extends State<HostEvent> {
       log('error: $e');
     }
   }
+    // ============= END =============
 
+  // ============= FORMAT TIME =============
   String _formatTime(TimeOfDay time) {
-    final String timeFormat = MediaQuery.of(context).alwaysUse24HourFormat ? 'HH:mm' : 'h:mm a';
+    final String timeFormat =
+        MediaQuery.of(context).alwaysUse24HourFormat ? 'HH:mm' : 'h:mm a';
     final DateTime now = DateTime.now();
     return DateFormat(timeFormat).format(DateTime(
       now.year,
@@ -144,6 +151,9 @@ class _HostEventState extends State<HostEvent> {
       time.minute,
     ));
   }
+  // ============= END =============
+
+  // ============= SHOW ALERT DIALOG =============
 
   void showAlertDialog(BuildContext context, String title, String message) {
     showDialog(
@@ -167,8 +177,12 @@ class _HostEventState extends State<HostEvent> {
       },
     );
   }
+  // ============= END =============
 
-  void showSuccessAlertDialog(BuildContext context, String title, String message) {
+  // ============= SHOW SUCCESS ALERT DIALOG =============
+
+  void showSuccessAlertDialog(
+      BuildContext context, String title, String message) {
     showDialog(
       context: context,
       builder: (context) {
@@ -183,9 +197,17 @@ class _HostEventState extends State<HostEvent> {
               ),
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).push(MaterialPageRoute(builder: (context) {
-                  return const AdminEvents();
-                }));
+                // Navigator.of(context).push(MaterialPageRoute(builder: (context) {
+                //   return const AdminEvents();
+                // }));
+                log('Before Navigation documentId: $documentId');
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => SetLocation(
+                      documentId: documentId,
+                    ),
+                  ),
+                );
               },
             ),
           ],
@@ -193,6 +215,9 @@ class _HostEventState extends State<HostEvent> {
       },
     );
   }
+  // ============= END =============
+
+  // ============= SELECT DATE AND TIME =============
 
   Future<void> _selectStartDate(BuildContext context) async {
     final ThemeData theme = Theme.of(context).copyWith(
@@ -217,7 +242,7 @@ class _HostEventState extends State<HostEvent> {
       });
     }
   }
-
+  
   Future<void> _selectEndDate(BuildContext context) async {
     final ThemeData theme = Theme.of(context).copyWith(
       colorScheme: ColorScheme.fromSwatch(
@@ -285,6 +310,10 @@ class _HostEventState extends State<HostEvent> {
       });
     }
   }
+  // ============= END =============
+  // ============= END ALL METHODS =============
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -418,7 +447,9 @@ class _HostEventState extends State<HostEvent> {
                   padding: const EdgeInsets.only(left: 30.0, right: 30.0),
                   child: ListTile(
                     title: const Text('Start Date'),
-                    subtitle: Text(_startDate != null ? DateFormat.yMd().format(_startDate!) : 'Not set'),
+                    subtitle: Text(_startDate != null
+                        ? DateFormat.yMd().format(_startDate!)
+                        : 'Not set'),
                     trailing: IconButton(
                       icon: const Icon(
                         Icons.calendar_today,
@@ -432,7 +463,9 @@ class _HostEventState extends State<HostEvent> {
                   padding: const EdgeInsets.only(left: 30.0, right: 30.0),
                   child: ListTile(
                     title: const Text('End Date'),
-                    subtitle: Text(_endDate != null ? DateFormat.yMd().format(_endDate!) : 'Not set'),
+                    subtitle: Text(_endDate != null
+                        ? DateFormat.yMd().format(_endDate!)
+                        : 'Not set'),
                     trailing: IconButton(
                       icon: const Icon(
                         Icons.calendar_today,
@@ -446,7 +479,9 @@ class _HostEventState extends State<HostEvent> {
                   padding: const EdgeInsets.only(left: 30.0, right: 30.0),
                   child: ListTile(
                     title: const Text('Start Time'),
-                    subtitle: Text(_startTime != null ? _startTime!.format(context) : 'Not set'),
+                    subtitle: Text(_startTime != null
+                        ? _startTime!.format(context)
+                        : 'Not set'),
                     trailing: IconButton(
                       icon: const Icon(
                         Icons.access_time,
@@ -460,7 +495,9 @@ class _HostEventState extends State<HostEvent> {
                   padding: const EdgeInsets.only(left: 30.0, right: 30.0),
                   child: ListTile(
                     title: const Text('End Time'),
-                    subtitle: Text(_endTime != null ? _endTime!.format(context) : 'Not set'),
+                    subtitle: Text(_endTime != null
+                        ? _endTime!.format(context)
+                        : 'Not set'),
                     trailing: IconButton(
                       icon: const Icon(
                         Icons.access_time,
@@ -532,25 +569,34 @@ class _HostEventState extends State<HostEvent> {
                 ),
                 Column(children: [
                   ElevatedButton(
-                      onPressed: () {
+                    onPressed: () {
+                      if (_numberOfDays > 0) {
                         _dayWiseDescription.clear();
                         for (int i = 0; i < _numberOfDays; i++) {
                           _dayWiseDescription.add(TextEditingController());
                         }
                         setState(() {});
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
+                      } else {
+                        showAlertDialog(
+                          context,
+                          "Invalid Input",
+                          "Please enter a valid number of days.",
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
-                        "Give daywise description",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )),
+                    ),
+                    child: const Text(
+                      "Give daywise description",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ]),
 
                 //DAYWISE DESCRIPTION FIELDS
@@ -571,7 +617,8 @@ class _HostEventState extends State<HostEvent> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 25.0),
                               child: TextField(
                                 controller: _dayWiseDescription[index],
                                 cursorColor: Colors.deepPurple,
@@ -611,7 +658,8 @@ class _HostEventState extends State<HostEvent> {
                         cursorColor: Colors.deepPurple,
                         maxLines: null,
                         decoration: const InputDecoration(
-                          hintText: 'Event location (describe the location here you need to point the location on map later)',
+                          hintText:
+                              'Event location (describe the location here you need to point the location on map later)',
                           border: InputBorder.none,
                         ),
                       ),
@@ -704,6 +752,7 @@ class _HostEventState extends State<HostEvent> {
                     SizedBox(
                       width: 300,
                       height: 50,
+                      // ============= ON PRESS HOST BUTTON WE HAVE TO PERFORM SOME VALIDATIONS =================
                       child: ElevatedButton(
                         onPressed: () async {
                           final title = _title.text.trim();
@@ -719,136 +768,166 @@ class _HostEventState extends State<HostEvent> {
                           final endDate = _endDate.toString();
                           final startTime = _startTime.toString();
                           final endTime = _endTime.toString();
-                          try {
-                            // if (title.isNotEmpty &&
-                            //     description.isNotEmpty &&
-                            //     instructions.isNotEmpty &&
-                            //     capacity.isNotEmpty &&
-                            //     location.isNotEmpty &&
-                            //     mobile.isNotEmpty &&
-                            //     email.isNotEmpty &&
-                            //     host.isNotEmpty &&
-                            //     email == userEmail &&
-                            //     email.contains('@') &&
-                            //     mobile.length == 11 &&
-                            //     startDate.isNotEmpty &&
-                            //     endDate.isNotEmpty &&
-                            //     startTime.isNotEmpty &&
-                            //     endTime.isNotEmpty) {
-                            //   await addEventDetails(
-                            //     title,
-                            //     description,
-                            //     instructions,
-                            //     capacity,
-                            //     location,
-                            //     mobile,
-                            //     email,
-                            //     host,
-                            //     timeStamp,
-                            //     _numberOfDays,
-                            //     _startDate!,
-                            //     _endDate!,
-                            //     _startTime!,
-                            //     _endTime!,
-                            //     numOfRegisteredUsers,
-                            //   );
 
-                              // ignore: use_build_context_synchronously
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => SetLocation(
-                                    // documentId: documentId,
-                                  ),
-                                ),
+                          try {
+                            // Validate day-wise descriptions
+                            if (_numberOfDays > 0) {
+                              if (_dayWiseDescription.isEmpty ||
+                                  _dayWiseDescription.length != _numberOfDays) {
+                                showAlertDialog(
+                                  context,
+                                  "Invalid Input",
+                                  "Please click 'Give daywise description' and fill all day-wise descriptions.",
+                                );
+                                return; 
+                              }
+
+                              bool isAnyDescriptionEmpty = false;
+                              for (int i = 0;
+                                  i < _dayWiseDescription.length;
+                                  i++) {
+                                if (_dayWiseDescription[i]
+                                    .text
+                                    .trim()
+                                    .isEmpty) {
+                                  isAnyDescriptionEmpty = true;
+                                  break;
+                                }
+                              }
+                              if (isAnyDescriptionEmpty) {
+                                showAlertDialog(
+                                  context,
+                                  "Invalid Input",
+                                  "Please add day-wise descriptions for all days.",
+                                );
+                                return; 
+                              }
+                            }
+
+                            // Validate other fields
+                            if (title.isNotEmpty &&
+                                description.isNotEmpty &&
+                                instructions.isNotEmpty &&
+                                capacity.isNotEmpty &&
+                                location.isNotEmpty &&
+                                mobile.isNotEmpty &&
+                                email.isNotEmpty &&
+                                host.isNotEmpty &&
+                                email == userEmail &&
+                                email.contains('@') &&
+                                mobile.length == 11 &&
+                                startDate.isNotEmpty &&
+                                endDate.isNotEmpty &&
+                                startTime.isNotEmpty &&
+                                endTime.isNotEmpty) {
+                              await addEventDetails(
+                                title,
+                                description,
+                                instructions,
+                                capacity,
+                                location,
+                                mobile,
+                                email,
+                                host,
+                                timeStamp,
+                                _numberOfDays,
+                                _startDate!,
+                                _endDate!,
+                                _startTime!,
+                                _endTime!,
+                                numOfRegisteredUsers,
                               );
 
-                            //   // ignore: use_build_context_synchronously
-                            //   showSuccessAlertDialog(
-                            //     context,
-                            //     "Success",
-                            //     "Event Hosted Successfully",
-                            //   );
-                            // } else if (title.isEmpty) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter your event title",
-                            //   );
-                            // } else if (description.isEmpty) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter your event description",
-                            //   );
-                            // } else if (instructions.isEmpty) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter your event instructions",
-                            //   );
-                            // } else if (location.isEmpty) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter your event location",
-                            //   );
-                            // } else if (mobile.isEmpty) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter your mobile number",
-                            //   );
-                            // } else if (mobile.length != 11) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter a valid mobile number",
-                            //   );
-                            // } else if (email.isEmpty || email != userEmail) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter your email address that you have used for registration",
-                            //   );
-                            // } else if (host.isEmpty) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter your name i.e. event host name",
-                            //   );
-                            // } else if (startDate.isEmpty) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter your event start date",
-                            //   );
-                            // } else if (endDate.isEmpty) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter your event last date",
-                            //   );
-                            // } else if (startTime.isEmpty) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter your event start time",
-                            //   );
-                            // } else if (endTime.isEmpty) {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter your event end time",
-                            //   );
-                            // } else {
-                            //   showAlertDialog(
-                            //     context,
-                            //     "Invalid Input",
-                            //     "Please enter a title and select start and end times.",
-                            //   );
-                            // }
+                              // Show success dialog
+                              showSuccessAlertDialog(
+                                // ignore: use_build_context_synchronously
+                                context,
+                                "Success",
+                                "Event Hosted Successfully",
+                              );
+                            } else if (title.isEmpty) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter your event title",
+                              );
+                            } else if (description.isEmpty) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter your event description",
+                              );
+                            } else if (instructions.isEmpty) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter your event instructions",
+                              );
+                            } else if (location.isEmpty) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter your event location",
+                              );
+                            } else if (mobile.isEmpty) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter your mobile number",
+                              );
+                            } else if (mobile.length != 11) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter a valid mobile number of 11 digits",
+                              );
+                            } else if (email.isEmpty || email != userEmail) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter your email address that you have used for registration",
+                              );
+                            } else if (host.isEmpty) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter your name i.e. event host name",
+                              );
+                            } else if (startDate.isEmpty) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter your event start date",
+                              );
+                            } else if (endDate.isEmpty) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter your event last date",
+                              );
+                            } else if (startTime.isEmpty) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter your event start time",
+                              );
+                            } else if (endTime.isEmpty) {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter your event end time",
+                              );
+                            } else {
+                              showAlertDialog(
+                                context,
+                                "Invalid Input",
+                                "Please enter a title and select start and end times.",
+                              );
+                            }
                           } catch (e) {
+                            // ignore: use_build_context_synchronously
                             showAlertDialog(context, "Error", e.toString());
+                            log('errorrrrrrr: $e');
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -874,12 +953,15 @@ class _HostEventState extends State<HostEvent> {
             ),
           ),
         ),
+
+        // =============  FLOATING ACTION BUTTON TO NAVIGATE TO MY EVENTS PAGE =============
         floatingActionButton: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             ElevatedButton(
               onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (context) {
+                Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (context) {
                   return const AdminEvents();
                 }));
               },

@@ -68,7 +68,7 @@ class _AdminNavigationDrawerState extends State<AdminNavigationDrawer> {
             const DrawerHeader(
               child: Center(
                 child: Text(
-                  "QRify ME",
+                  "EnterestIn",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 30,

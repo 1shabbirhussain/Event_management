@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:event_managment/admin/admin_events.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,11 +9,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 
 class SetLocation extends StatefulWidget {
-  // final String documentId;
+  final String documentId;
 
   const SetLocation({
     Key? key,
-    // required this.documentId,
+    required this.documentId,
   }) : super(key: key);
 
   @override
@@ -37,7 +38,8 @@ class _SetLocationState extends State<SetLocation> {
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
 
       setState(() {
         _selectedLocation = LatLng(position.latitude, position.longitude);
@@ -49,14 +51,16 @@ class _SetLocationState extends State<SetLocation> {
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.deniedForever || permission == LocationPermission.denied) {
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) {
         return;
       }
     }
 
     try {
-      Position position =
-          await Geolocator.getLastKnownPosition() ?? await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      Position position = await Geolocator.getLastKnownPosition() ??
+          await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
 
       setState(() {
         _selectedLocation = LatLng(position.latitude, position.longitude);
@@ -91,8 +95,9 @@ class _SetLocationState extends State<SetLocation> {
             ),
             children: [
               TileLayer(
-                urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                subdomains: ['a', 'b', 'c'],
+                urlTemplate:
+                    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                subdomains: const ['a', 'b', 'c'],
               ),
               if (_selectedLocation != null)
                 MarkerLayer(
@@ -144,10 +149,12 @@ class _SetLocationState extends State<SetLocation> {
                     final query = _searchController.text;
                     if (query.isNotEmpty) {
                       try {
-                        List<Location> locations = await locationFromAddress(query);
+                        List<Location> locations =
+                            await locationFromAddress(query);
                         if (locations.isNotEmpty) {
                           final loc = locations.first;
-                          LatLng searchLocation = LatLng(loc.latitude, loc.longitude);
+                          LatLng searchLocation =
+                              LatLng(loc.latitude, loc.longitude);
                           _mapController.move(searchLocation, 15);
                           setState(() {
                             _selectedLocation = searchLocation;
@@ -155,6 +162,7 @@ class _SetLocationState extends State<SetLocation> {
                         }
                       } catch (e) {
                         showDialog(
+                          // ignore: use_build_context_synchronously
                           context: context,
                           builder: (BuildContext context) {
                             return AlertDialog(
@@ -200,17 +208,38 @@ class _SetLocationState extends State<SetLocation> {
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           if (_selectedLocation != null) {
-            // await FirebaseFirestore.instance
-            //     .collection("events")
-            //     .doc(widget.documentId)
-            //     .update({
-            //   'latitude': _selectedLocation!.latitude,
-            //   'longitude': _selectedLocation!.longitude,
-            //   'range': _eventRadius,
-            // });
+            await FirebaseFirestore.instance
+                .collection("events")
+                .doc(widget.documentId)
+                .update({
+              'latitude': _selectedLocation!.latitude,
+              'longitude': _selectedLocation!.longitude,
+              'range': _eventRadius,
+            });
+            // ignore: use_build_context_synchronously
+            Navigator.of(context).push(MaterialPageRoute(builder: (context) {
+              return const AdminEvents();
+            }));
+          } else {
+            // ignore: use_build_context_synchronously
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Error'),
+                  content: const Text('Please select a location'),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('OK'),
+                    ),
+                  ],
+                );
+              },
+            );
           }
-          // ignore: use_build_context_synchronously
-          Navigator.pop(context);
         },
         backgroundColor: Colors.deepPurple,
         child: const Icon(Icons.check),
