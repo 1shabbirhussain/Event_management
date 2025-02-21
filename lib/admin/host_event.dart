@@ -2,6 +2,7 @@
 
 import 'dart:developer';
 
+import 'package:event_managment/.ai-api/groq_ai.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -31,6 +32,7 @@ class _HostEventState extends State<HostEvent> {
   DateTime? _endDate;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
+  bool loading = false;
 
   List<TextEditingController> _dayWiseDescription = [];
   int _numberOfDays = 0;
@@ -80,6 +82,7 @@ class _HostEventState extends State<HostEvent> {
 
     super.dispose();
   }
+
   // ============= ADD EVENT DETAILS TO FIREBASE =============
   Future<void> addEventDetails(
     String title,
@@ -97,6 +100,7 @@ class _HostEventState extends State<HostEvent> {
     TimeOfDay startTime,
     TimeOfDay endTime,
     int numOfRegisteredUsers,
+    String category, // New parameter
   ) async {
     try {
       final eventDoc = FirebaseFirestore.instance.collection("events").doc();
@@ -127,6 +131,7 @@ class _HostEventState extends State<HostEvent> {
         'startTime': _formatTime(startTime),
         'endTime': _formatTime(endTime),
         'numOfRegisteredUsers': numOfRegisteredUsers,
+        'category': category, // Store AI-determined category
       };
 
       await eventDoc.set(eventData);
@@ -136,7 +141,7 @@ class _HostEventState extends State<HostEvent> {
       log('error: $e');
     }
   }
-    // ============= END =============
+  // ============= END =============
 
   // ============= FORMAT TIME =============
   String _formatTime(TimeOfDay time) {
@@ -201,7 +206,7 @@ class _HostEventState extends State<HostEvent> {
                 //   return const AdminEvents();
                 // }));
                 log('Before Navigation documentId: $documentId');
-                Navigator.of(context).push(
+                Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
                     builder: (context) => SetLocation(
                       documentId: documentId,
@@ -242,7 +247,7 @@ class _HostEventState extends State<HostEvent> {
       });
     }
   }
-  
+
   Future<void> _selectEndDate(BuildContext context) async {
     final ThemeData theme = Theme.of(context).copyWith(
       colorScheme: ColorScheme.fromSwatch(
@@ -312,8 +317,6 @@ class _HostEventState extends State<HostEvent> {
   }
   // ============= END =============
   // ============= END ALL METHODS =============
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -754,194 +757,215 @@ class _HostEventState extends State<HostEvent> {
                       height: 50,
                       // ============= ON PRESS HOST BUTTON WE HAVE TO PERFORM SOME VALIDATIONS =================
                       child: ElevatedButton(
-                        onPressed: () async {
-                          final title = _title.text.trim();
-                          final description = _description.text.trim();
-                          final instructions = _instructions.text.trim();
-                          final capacity = _capacity.text.trim();
-                          final location = _location.text.trim();
-                          final mobile = _mobile.text.trim();
-                          final email = _email.text.trim();
-                          final host = _host.text.trim();
-                          final timeStamp = DateTime.now().toString();
-                          final startDate = _startDate.toString();
-                          final endDate = _endDate.toString();
-                          final startTime = _startTime.toString();
-                          final endTime = _endTime.toString();
+                        onPressed: loading
+                            ? null // Disable the button when loading
+                            : () async {
+                                setState(() {
+                                  loading = true; // Start loading
+                                });
 
-                          try {
-                            // Validate day-wise descriptions
-                            if (_numberOfDays > 0) {
-                              if (_dayWiseDescription.isEmpty ||
-                                  _dayWiseDescription.length != _numberOfDays) {
-                                showAlertDialog(
-                                  context,
-                                  "Invalid Input",
-                                  "Please click 'Give daywise description' and fill all day-wise descriptions.",
-                                );
-                                return; 
-                              }
+                                final title = _title.text.trim();
+                                final description = _description.text.trim();
+                                final instructions = _instructions.text.trim();
+                                final capacity = _capacity.text.trim();
+                                final location = _location.text.trim();
+                                final mobile = _mobile.text.trim();
+                                final email = _email.text.trim();
+                                final host = _host.text.trim();
+                                final timeStamp = DateTime.now().toString();
+                                final startDate = _startDate.toString();
+                                final endDate = _endDate.toString();
+                                final startTime = _startTime.toString();
+                                final endTime = _endTime.toString();
 
-                              bool isAnyDescriptionEmpty = false;
-                              for (int i = 0;
-                                  i < _dayWiseDescription.length;
-                                  i++) {
-                                if (_dayWiseDescription[i]
-                                    .text
-                                    .trim()
-                                    .isEmpty) {
-                                  isAnyDescriptionEmpty = true;
-                                  break;
+                                try {
+                                  // Validate day-wise descriptions
+                                  if (_numberOfDays > 0) {
+                                    if (_dayWiseDescription.isEmpty ||
+                                        _dayWiseDescription.length !=
+                                            _numberOfDays) {
+                                      showAlertDialog(
+                                        context,
+                                        "Invalid Input",
+                                        "Please click 'Give daywise description' and fill all day-wise descriptions.",
+                                      );
+                                      return;
+                                    }
+
+                                    bool isAnyDescriptionEmpty = false;
+                                    for (int i = 0;
+                                        i < _dayWiseDescription.length;
+                                        i++) {
+                                      if (_dayWiseDescription[i]
+                                          .text
+                                          .trim()
+                                          .isEmpty) {
+                                        isAnyDescriptionEmpty = true;
+                                        break;
+                                      }
+                                    }
+                                    if (isAnyDescriptionEmpty) {
+                                      showAlertDialog(
+                                        context,
+                                        "Invalid Input",
+                                        "Please add day-wise descriptions for all days.",
+                                      );
+                                      return;
+                                    }
+                                  }
+
+                                  // Validate other fields
+                                  if (title.isNotEmpty &&
+                                      description.isNotEmpty &&
+                                      instructions.isNotEmpty &&
+                                      capacity.isNotEmpty &&
+                                      location.isNotEmpty &&
+                                      mobile.isNotEmpty &&
+                                      email.isNotEmpty &&
+                                      host.isNotEmpty &&
+                                      email == userEmail &&
+                                      email.contains('@') &&
+                                      mobile.length == 11 &&
+                                      startDate.isNotEmpty &&
+                                      endDate.isNotEmpty &&
+                                      startTime.isNotEmpty &&
+                                      endTime.isNotEmpty) {
+                                    // Call AI API to classify the event
+                                    String category =
+                                        await classifyEvent(description);
+
+                                    // Add event details to Firestore
+                                    await addEventDetails(
+                                      title,
+                                      description,
+                                      instructions,
+                                      capacity,
+                                      location,
+                                      mobile,
+                                      email,
+                                      host,
+                                      timeStamp,
+                                      _numberOfDays,
+                                      _startDate!,
+                                      _endDate!,
+                                      _startTime!,
+                                      _endTime!,
+                                      numOfRegisteredUsers,
+                                      category,
+                                    );
+
+                                    // Show success dialog
+                                    showSuccessAlertDialog(
+                                      context,
+                                      "Success",
+                                      "Event Hosted Successfully",
+                                    );
+                                  } else if (title.isEmpty) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter your event title",
+                                    );
+                                  } else if (description.isEmpty) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter your event description",
+                                    );
+                                  } else if (instructions.isEmpty) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter your event instructions",
+                                    );
+                                  } else if (location.isEmpty) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter your event location",
+                                    );
+                                  } else if (mobile.isEmpty) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter your mobile number",
+                                    );
+                                  } else if (mobile.length != 11) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter a valid mobile number of 11 digits",
+                                    );
+                                  } else if (email.isEmpty ||
+                                      email != userEmail) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter your email address that you have used for registration",
+                                    );
+                                  } else if (host.isEmpty) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter your name i.e. event host name",
+                                    );
+                                  } else if (startDate.isEmpty) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter your event start date",
+                                    );
+                                  } else if (endDate.isEmpty) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter your event last date",
+                                    );
+                                  } else if (startTime.isEmpty) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter your event start time",
+                                    );
+                                  } else if (endTime.isEmpty) {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter your event end time",
+                                    );
+                                  } else {
+                                    showAlertDialog(
+                                      context,
+                                      "Invalid Input",
+                                      "Please enter a title and select start and end times.",
+                                    );
+                                  }
+                                } catch (e) {
+                                  showAlertDialog(
+                                      context, "Error", e.toString());
+                                  log('errorrrrrrr: $e');
+                                } finally {
+                                  setState(() {
+                                    loading = false; // Stop loading
+                                  });
                                 }
-                              }
-                              if (isAnyDescriptionEmpty) {
-                                showAlertDialog(
-                                  context,
-                                  "Invalid Input",
-                                  "Please add day-wise descriptions for all days.",
-                                );
-                                return; 
-                              }
-                            }
-
-                            // Validate other fields
-                            if (title.isNotEmpty &&
-                                description.isNotEmpty &&
-                                instructions.isNotEmpty &&
-                                capacity.isNotEmpty &&
-                                location.isNotEmpty &&
-                                mobile.isNotEmpty &&
-                                email.isNotEmpty &&
-                                host.isNotEmpty &&
-                                email == userEmail &&
-                                email.contains('@') &&
-                                mobile.length == 11 &&
-                                startDate.isNotEmpty &&
-                                endDate.isNotEmpty &&
-                                startTime.isNotEmpty &&
-                                endTime.isNotEmpty) {
-                              await addEventDetails(
-                                title,
-                                description,
-                                instructions,
-                                capacity,
-                                location,
-                                mobile,
-                                email,
-                                host,
-                                timeStamp,
-                                _numberOfDays,
-                                _startDate!,
-                                _endDate!,
-                                _startTime!,
-                                _endTime!,
-                                numOfRegisteredUsers,
-                              );
-
-                              // Show success dialog
-                              showSuccessAlertDialog(
-                                // ignore: use_build_context_synchronously
-                                context,
-                                "Success",
-                                "Event Hosted Successfully",
-                              );
-                            } else if (title.isEmpty) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter your event title",
-                              );
-                            } else if (description.isEmpty) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter your event description",
-                              );
-                            } else if (instructions.isEmpty) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter your event instructions",
-                              );
-                            } else if (location.isEmpty) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter your event location",
-                              );
-                            } else if (mobile.isEmpty) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter your mobile number",
-                              );
-                            } else if (mobile.length != 11) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter a valid mobile number of 11 digits",
-                              );
-                            } else if (email.isEmpty || email != userEmail) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter your email address that you have used for registration",
-                              );
-                            } else if (host.isEmpty) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter your name i.e. event host name",
-                              );
-                            } else if (startDate.isEmpty) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter your event start date",
-                              );
-                            } else if (endDate.isEmpty) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter your event last date",
-                              );
-                            } else if (startTime.isEmpty) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter your event start time",
-                              );
-                            } else if (endTime.isEmpty) {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter your event end time",
-                              );
-                            } else {
-                              showAlertDialog(
-                                context,
-                                "Invalid Input",
-                                "Please enter a title and select start and end times.",
-                              );
-                            }
-                          } catch (e) {
-                            // ignore: use_build_context_synchronously
-                            showAlertDialog(context, "Error", e.toString());
-                            log('errorrrrrrr: $e');
-                          }
-                        },
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.deepPurple,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
                         ),
-                        child: const Text(
-                          "HOST",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: loading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white, // Show loading indicator
+                              )
+                            : const Text(
+                                "HOST",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                   ],

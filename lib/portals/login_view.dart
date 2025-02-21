@@ -39,7 +39,7 @@ class _LoginViewState extends State<LoginView> {
             .signInWithEmailAndPassword(email: email, password: password);
         await storeUserType('host');
         // ignore: use_build_context_synchronously
-        Navigator.of(context).push(MaterialPageRoute(builder: (context) {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) {
           return const HostEvent();
         }));
         _email.clear();
@@ -102,7 +102,7 @@ class _LoginViewState extends State<LoginView> {
             .signInWithEmailAndPassword(email: email, password: password);
         await storeUserType('attendee');
         // ignore: use_build_context_synchronously
-        Navigator.of(context).push(MaterialPageRoute(builder: (context) {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) {
           return const Events();
         }));
         _email.clear();

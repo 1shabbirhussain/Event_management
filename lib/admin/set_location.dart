@@ -217,7 +217,7 @@ class _SetLocationState extends State<SetLocation> {
               'range': _eventRadius,
             });
             // ignore: use_build_context_synchronously
-            Navigator.of(context).push(MaterialPageRoute(builder: (context) {
+            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) {
               return const AdminEvents();
             }));
           } else {
